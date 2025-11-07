@@ -1,9 +1,9 @@
-# NetfliX Movies and Tv Shows Anlysis Using SQL
+# NetfliX Movies and Tv Shows Anlysis Using MSSQL
 
  ![](https://github.com/Nenye-anne/Netflix_SQL_PROJECT/blob/main/logo.png)
  
 ## Overview
-This project involves a comprehensive analysis of Netflix's movies and TV shows data using SQL. The goal is to extract valuable insights and answer various business questions based on the dataset. The following README provides a detailed account of the project's objectives, business problems, solutions, findings, and conclusions.
+This project involves a comprehensive analysis of Netflix's movies and TV shows data using MSSQL. The goal is to extract valuable insights and answer various business questions based on the dataset. The following README provides a detailed account of the project's objectives, business problems, solutions, findings, and conclusions.
 
 ## Objectives
 
