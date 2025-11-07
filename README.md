@@ -1,6 +1,7 @@
 # NetfliX Movies and Tv Shows Anlysis Using SQL
 
  ![](https://github.com/Nenye-anne/Netflix_SQL_PROJECT/blob/main/logo.png)
+ 
 ## Overview
 This project involves a comprehensive analysis of Netflix's movies and TV shows data using SQL. The goal is to extract valuable insights and answer various business questions based on the dataset. The following README provides a detailed account of the project's objectives, business problems, solutions, findings, and conclusions.
 
@@ -9,7 +10,6 @@ This project involves a comprehensive analysis of Netflix's movies and TV shows 
 - Analyze the distribution of content types (movies vs TV shows).
 - Identify the most common ratings for movies and TV shows.
 - List and analyze content based on release years, countries, and durations.
-- Explore and categorize content based on specific criteria and keywords.
 
 ## Dataset
 
@@ -44,10 +44,10 @@ CREATE TABLE netflix
 
 ```sql
 SELECT 
-    type,
-    COUNT(*)
-FROM netflix
-GROUP BY 1;
+    type, 
+    COUNT(*) AS total_content
+FROM Netflix
+GROUP BY type;
 ```
 
 **Objective:** Determine the distribution of content types on Netflix.
@@ -55,27 +55,19 @@ GROUP BY 1;
 ### 2. Find the Most Common Rating for Movies and TV Shows
 
 ```sql
-WITH RatingCounts AS (
-    SELECT 
-        type,
-        rating,
-        COUNT(*) AS rating_count
-    FROM netflix
-    GROUP BY type, rating
-),
-RankedRatings AS (
-    SELECT 
-        type,
-        rating,
-        rating_count,
-        RANK() OVER (PARTITION BY type ORDER BY rating_count DESC) AS rank
-    FROM RatingCounts
-)
-SELECT 
+SELECT
     type,
-    rating AS most_frequent_rating
-FROM RankedRatings
-WHERE rank = 1;
+    rating
+FROM (
+    SELECT
+        type,
+        rating,
+        COUNT(*) as count_records,
+        RANK() OVER (PARTITION BY type ORDER BY COUNT(*) DESC) as ranking
+    FROM Netflix
+    GROUP BY type, rating
+) as t1
+WHERE ranking = 1;
 ```
 
 **Objective:** Identify the most frequently occurring rating for each type of content.
@@ -83,9 +75,10 @@ WHERE rank = 1;
 ### 3. List All Movies Released in a Specific Year (e.g., 2020)
 
 ```sql
-SELECT * 
-FROM netflix
-WHERE release_year = 2020;
+Select*
+From Netflix
+Where type ='Movie' 
+and release_year = 2020;
 ```
 
 **Objective:** Retrieve all movies released in a specific year.
@@ -93,18 +86,13 @@ WHERE release_year = 2020;
 ### 4. Find the Top 5 Countries with the Most Content on Netflix
 
 ```sql
-SELECT * 
-FROM
-(
-    SELECT 
-        UNNEST(STRING_TO_ARRAY(country, ',')) AS country,
-        COUNT(*) AS total_content
-    FROM netflix
-    GROUP BY 1
-) AS t1
-WHERE country IS NOT NULL
-ORDER BY total_content DESC
-LIMIT 5;
+SELECT 
+   TOP 5 TRIM(value) AS new_country,
+    COUNT(Show_id) AS total_content
+FROM Netflix
+CROSS APPLY STRING_SPLIT(country, ',')
+GROUP BY TRIM(value)
+ORDER BY total_content DESC;
 ```
 
 **Objective:** Identify the top 5 countries with the highest number of content items.
@@ -112,11 +100,10 @@ LIMIT 5;
 ### 5. Identify the Longest Movie
 
 ```sql
-SELECT 
-    *
-FROM netflix
-WHERE type = 'Movie'
-ORDER BY SPLIT_PART(duration, ' ', 1)::INT DESC;
+SELECT *
+FROM NETFLIX
+WHERE TYPE = 'MOVIE'
+AND DURATION = (SELECT MAX(DURATION) FROM NETFLIX);
 ```
 
 **Objective:** Find the movie with the longest duration.
@@ -125,8 +112,8 @@ ORDER BY SPLIT_PART(duration, ' ', 1)::INT DESC;
 
 ```sql
 SELECT *
-FROM netflix
-WHERE TO_DATE(date_added, 'Month DD, YYYY') >= CURRENT_DATE - INTERVAL '5 years';
+FROM Netflix
+WHERE date_added >= DATEADD(YEAR, -5, GETDATE());
 ```
 
 **Objective:** Retrieve content added to Netflix in the last 5 years.
@@ -134,14 +121,9 @@ WHERE TO_DATE(date_added, 'Month DD, YYYY') >= CURRENT_DATE - INTERVAL '5 years'
 ### 7. Find All Movies/TV Shows by Director 'Rajiv Chilaka'
 
 ```sql
-SELECT *
-FROM (
-    SELECT 
-        *,
-        UNNEST(STRING_TO_ARRAY(director, ',')) AS director_name
-    FROM netflix
-) AS t
-WHERE director_name = 'Rajiv Chilaka';
+Select *
+From Netflix
+Where director Like '%Rajiv Chilaka%';
 ```
 
 **Objective:** List all content directed by 'Rajiv Chilaka'.
@@ -150,9 +132,9 @@ WHERE director_name = 'Rajiv Chilaka';
 
 ```sql
 SELECT *
-FROM netflix
-WHERE type = 'TV Show'
-  AND SPLIT_PART(duration, ' ', 1)::INT > 5;
+FROM Netflix
+WHERE type = 'TV Show' 
+  AND CAST(LEFT(duration, CHARINDEX(' ', duration) - 1) AS INT) > 5;
 ```
 
 **Objective:** Identify TV shows with more than 5 seasons.
@@ -161,10 +143,11 @@ WHERE type = 'TV Show'
 
 ```sql
 SELECT 
-    UNNEST(STRING_TO_ARRAY(listed_in, ',')) AS genre,
-    COUNT(*) AS total_content
+    TRIM(value) AS Genre,
+    COUNT(show_id) AS Total_Shows
 FROM netflix
-GROUP BY 1;
+CROSS APPLY STRING_SPLIT(listed_in, ',')
+GROUP BY TRIM(value);
 ```
 
 **Objective:** Count the number of content items in each genre.
@@ -173,28 +156,28 @@ GROUP BY 1;
 return top 5 year with highest avg content release!
 
 ```sql
-SELECT 
-    country,
-    release_year,
-    COUNT(show_id) AS total_release,
-    ROUND(
-        COUNT(show_id)::numeric /
-        (SELECT COUNT(show_id) FROM netflix WHERE country = 'India')::numeric * 100, 2
-    ) AS avg_release
-FROM netflix
-WHERE country = 'India'
-GROUP BY country, release_year
-ORDER BY avg_release DESC
-LIMIT 5;
+SELECT RIGHT(date_added, 4) AS year,
+       COUNT(*) AS total_content,
+       CAST(COUNT(*) AS NUMERIC(10,2)) / 
+       (SELECT COUNT(*)
+	   FROM Netflix 
+	   WHERE Country = 'United States') * 100 AS Avg_Content_Per_Year
+FROM Netflix
+WHERE Country = 'United States'
+GROUP BY RIGHT(date_added, 4);
 ```
 
 ## Findings and Conclusion
 
 - **Content Distribution:** The dataset contains a diverse range of movies and TV shows with varying ratings and genres.
 - **Common Ratings:** Insights into the most common ratings provide an understanding of the content's target audience.
-- **Geographical Insights:** The top countries and the average content releases by India highlight regional content distribution.
-- **Content Categorization:** Categorizing content based on specific keywords helps in understanding the nature of content available on Netflix.
+- **Geographical Insights:** The top countries and the average content releases by USA highlight regional content distribution.
 
 This analysis provides a comprehensive view of Netflix's content and can help inform content strategy and decision-making.
+
+
+
+
+
 
 
